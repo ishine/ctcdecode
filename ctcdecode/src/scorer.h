@@ -5,7 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
+#include <functional>
 #include "lm/enumerate_vocab.hh"
 #include "lm/virtual_interface.hh"
 #include "lm/word_index.hh"
@@ -43,7 +43,10 @@ public:
   Scorer(double alpha,
          double beta,
          const std::string &lm_path,
-         const std::vector<std::string> &vocabulary);
+         const std::vector<std::string> &vocabulary,
+         int max_order,
+         const std::string& neural_lm_path,
+         bool kenlm);
   ~Scorer();
 
   double get_log_cond_prob(const std::vector<std::string> &words);
@@ -101,10 +104,14 @@ private:
   bool is_character_based_;
   size_t max_order_;
   size_t dict_size_;
-
+  std::vector<float> cache_;
+  int vocabSize_;
+  bool kenlm_;
   int SPACE_ID_;
+  std::string neural_lm_path_;
   std::vector<std::string> char_list_;
   std::unordered_map<std::string, int> char_map_;
+  std::unordered_map<std::string, int> word_to_ix;
 
   std::vector<std::string> vocabulary_;
 };
