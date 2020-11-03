@@ -1,8 +1,14 @@
+#include <torch/script.h>
 #include "scorer.h"
 
+#include <torch/torch.h>
 #include <unistd.h>
 #include <iostream>
-
+#include <fstream>
+#include <string>
+#include <vector>
+#include <iterator>
+#include <algorithm>
 #include "lm/config.hh"
 #include "lm/model.hh"
 #include "lm/state.hh"
@@ -12,22 +18,26 @@
 #include "decoder_utils.h"
 
 using namespace lm::ngram;
-
+using namespace std;
 Scorer::Scorer(double alpha,
                double beta,
                const std::string& lm_path,
-               const std::vector<std::string>& vocab_list) {
+               const std::vector<std::string>& vocab_list,
+               int max_order,
+               const std::string& neural_lm_path,
+               bool kenlm) {
   this->alpha = alpha;
   this->beta = beta;
 
   dictionary = nullptr;
   is_character_based_ = true;
   language_model_ = nullptr;
-
-  max_order_ = 0;
+  max_order_ = max_order;
   dict_size_ = 0;
   SPACE_ID_ = -1;
-
+  neural_lm_path_ = neural_lm_path;
+  vocabSize_ = vocab_list.size();
+  kenlm_ = kenlm;
   setup(lm_path, vocab_list);
 }
 
@@ -53,6 +63,7 @@ void Scorer::setup(const std::string& lm_path,
 }
 
 void Scorer::load_lm(const std::string& lm_path) {
+  if(kenlm_){
   const char* filename = lm_path.c_str();
   VALID_CHECK_EQ(access(filename, F_OK), 0, "Invalid language model path");
 
@@ -69,9 +80,25 @@ void Scorer::load_lm(const std::string& lm_path) {
       is_character_based_ = false;
     }
   }
+  }
+  else{
+    string word;
+    std::ifstream file;
+    file.open(lm_path);
+    while(getline(file, word)){
+        vocabulary_.push_back(word);
+        if (is_character_based_ && word != UNK_TOKEN &&
+        word != START_TOKEN && word != END_TOKEN &&
+        word.length() > 1) {
+            is_character_based_ = false;
+    }
+    }
+    file.close();
+  }
 }
 
 double Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
+  if(kenlm_){
   lm::base::Model* model = static_cast<lm::base::Model*>(language_model_);
   double cond_prob;
   lm::ngram::State state, tmp_state, out_state;
@@ -90,6 +117,55 @@ double Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
   }
   // return  loge prob
   return cond_prob/NUM_FLT_LOGE;
+  }
+  else{
+  std::vector<int> sentence;
+  std::string word;
+  double score = 0.0;
+  int tokenIdx;
+  size_t i;
+  if(is_character_based_){
+  for(i=0; i<words.size()-1; i++){
+    sentence[i] = int(words[i][0]);
+  }
+  tokenIdx = int(words[i][0]);
+  }
+  else{
+    std::vector<std::string>::iterator it;
+    if(words.size() !=0){
+    for (i = 0; i < words.size()-1; ++i){
+      it = std::find(vocabulary_.begin(),vocabulary_.end(),words[i]);
+      if(it != vocabulary_.end()){
+        sentence.push_back(int(it - vocabulary_.begin()));
+      }
+    }
+    it = std::find(vocabulary_.begin(),vocabulary_.end(),words[i]);
+      if(it != vocabulary_.end()){
+        tokenIdx = int(it - vocabulary_.begin());
+      }
+    }
+  }
+  if (sentence.size() >= 2){
+  torch::jit::script::Module module;
+  module = torch::jit::load(neural_lm_path_);
+  auto opts = torch::TensorOptions().dtype(torch::kInt32);
+  torch::Tensor t = torch::from_blob(sentence.data(), sentence.size(), opts).to(torch::kInt64);
+  vector<torch::jit::IValue> inputs;
+  inputs.push_back(t);
+  at::Tensor output = module.forward(inputs).toTensor();
+  const int64_t num_classes = output.size(1);
+  auto prob_accessor = output.accessor<float, 2>();
+  if(tokenIdx<num_classes){
+    score = prob_accessor[0][tokenIdx];
+    std::cout<<"";
+  }
+  }
+  if (std::isnan(score) || !std::isfinite(score)) {
+    throw std::runtime_error(
+        "[ConvLM] Bad scoring from ConvLM: " + std::to_string(score));
+  }
+  return score;
+  }
 }
 
 double Scorer::get_sent_log_prob(const std::vector<std::string>& words) {
@@ -164,7 +240,7 @@ std::vector<std::string> Scorer::make_ngram(PathTrie* prefix) {
   std::vector<std::string> ngram;
   PathTrie* current_node = prefix;
   PathTrie* new_node = nullptr;
-
+  if(kenlm_){
   for (int order = 0; order < max_order_; order++) {
     std::vector<int> prefix_vec;
     std::vector<int> prefix_steps;
@@ -188,6 +264,40 @@ std::vector<std::string> Scorer::make_ngram(PathTrie* prefix) {
       }
       break;
     }
+  }
+  }
+  else{
+  for (int order = 0; order < max_order_; order++) {
+    std::vector<int> prefix_vec;
+    std::vector<int> prefix_steps;
+
+    if (is_character_based_) {
+      new_node = current_node->get_path_vec(prefix_vec, prefix_steps, -1, 1);
+      current_node = new_node;
+    } else {
+      new_node = current_node->get_path_vec(prefix_vec, prefix_steps, SPACE_ID_);
+      current_node = new_node->parent;  // Skipping spaces
+    }
+
+    // reconstruct word
+    std::string word;
+    if (is_character_based_){
+    for(int i=0;i<prefix_vec.size();i++)
+    word += std::to_string(prefix_vec[i]);
+    }
+    else{
+      word = vec2str(prefix_vec);
+    }
+    ngram.push_back(word);
+
+    if (new_node->character == -1) {
+      // No more spaces, but still need order
+      for (int i = 0; i < max_order_ - order - 1; i++) {
+        ngram.push_back(START_TOKEN);
+      }
+      break;
+    }
+  }
   }
   std::reverse(ngram.begin(), ngram.end());
   return ngram;
