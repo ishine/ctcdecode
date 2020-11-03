@@ -33,8 +33,11 @@ int paddle_beam_decode_lm(THFloatTensor *th_probs,
 void* paddle_get_scorer(double alpha,
                         double beta,
                         const char* lm_path,
-                        std::vector<std::string> labels,
-                        int vocab_size);
+                        vector<std::string> new_vocab,
+                        int vocab_size,
+                        int max_order,
+                        const char* neural_lm_path,
+                        bool kenlm);
 
 void paddle_release_scorer(void* scorer);
 
