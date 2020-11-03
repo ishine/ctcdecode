@@ -5,6 +5,7 @@
 #include <torch/torch.h>
 #include <memory>
 #include "scorer.h"
+#include <functional>
 #include "ctc_beam_search_decoder.h"
 #include "utf8.h"
 #include "boost/shared_ptr.hpp"
@@ -143,8 +144,11 @@ void* paddle_get_scorer(double alpha,
                         double beta,
                         const char* lm_path,
                         vector<std::string> new_vocab,
-                        int vocab_size) {
-    Scorer* scorer = new Scorer(alpha, beta, lm_path, new_vocab);
+                        int vocab_size,
+                        int max_order,
+                        const char* neural_lm_path,
+                        bool kenlm) {
+    Scorer* scorer = new Scorer(alpha, beta, lm_path, new_vocab, max_order, neural_lm_path, kenlm);
     return static_cast<void*>(scorer);
 }
 
