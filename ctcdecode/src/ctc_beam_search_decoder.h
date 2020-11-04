@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include "scorer.h"
+#include "lm_scorer.h"
 #include "output.h"
 
 /* CTC Beam Search Decoder
