@@ -4,8 +4,9 @@
 #include <vector>
 #include <torch/torch.h>
 #include <memory>
-#include "scorer.h"
-#include <functional>
+#include "lm_scorer.h"
+#include "kenlm_scorer.h"
+#include "neural_scorer.h"
 #include "ctc_beam_search_decoder.h"
 #include "utf8.h"
 #include "boost/shared_ptr.hpp"
@@ -148,8 +149,14 @@ void* paddle_get_scorer(double alpha,
                         int max_order,
                         const char* neural_lm_path,
                         bool kenlm) {
-    Scorer* scorer = new Scorer(alpha, beta, lm_path, new_vocab, max_order, neural_lm_path, kenlm);
+    if (kenlm){
+    Kenlm_Scorer* scorer = new Kenlm_Scorer(alpha, beta, lm_path, new_vocab);
     return static_cast<void*>(scorer);
+    }
+    else{
+        Neural_Scorer* scorer = new Neural_Scorer(alpha, beta, lm_path, new_vocab, max_order, neural_lm_path);
+        return static_cast<void*>(scorer);
+    }
 }
 
 void paddle_release_scorer(void* scorer) {
