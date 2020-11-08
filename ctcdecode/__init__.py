@@ -3,7 +3,7 @@ from ._ext import ctc_decode
 
 
 class CTCBeamDecoder(object):
-    def __init__(self, labels, model_path=None, alpha=2.0, beta=0.0, cutoff_top_n=40, cutoff_prob=1.0, beam_width=100,
+    def __init__(self, labels, model_path=None, alpha=0.0, beta=0.0, cutoff_top_n=40, cutoff_prob=1.0, beam_width=100,
                  num_processes=4, blank_id=0, log_probs_input=False, max_order=3, neural_lm_path="none", kenlm=True):
         self.cutoff_top_n = cutoff_top_n
         self._beam_width = beam_width
