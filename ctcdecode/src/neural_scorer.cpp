@@ -8,7 +8,7 @@
 #include <vector>
 #include <iterator>
 #include <algorithm>
-
+#include <tuple>
 #include "decoder_utils.h"
 
 using namespace std;
@@ -91,18 +91,19 @@ double Neural_Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
       }
     }
   }
-  if (sentence.size() >= 2){
+  if (sentence.size() >= max_order_-1){
   torch::jit::script::Module module;
   module = torch::jit::load(neural_lm_path_);
   auto opts = torch::TensorOptions().dtype(torch::kInt32);
   torch::Tensor t = torch::from_blob(sentence.data(), sentence.size(), opts).to(torch::kInt64);
   vector<torch::jit::IValue> inputs;
-  inputs.push_back(t);
-  at::Tensor output = module.forward(inputs).toTensor();
+  inputs.push_back(t.unsqueeze(1));
+  auto outputs = module.forward(inputs).toTuple()->elements()[0];
+  at::Tensor output = outputs.toTensor();
   const int64_t num_classes = output.size(1);
-  auto prob_accessor = output.accessor<float, 2>();
+  auto prob_accessor = output.accessor<float, 3>();
   if(tokenIdx<num_classes){
-    score = prob_accessor[0][tokenIdx];
+    score = prob_accessor[0][sentence.size()-1][tokenIdx];
     std::cout<<"";
   }
   }
