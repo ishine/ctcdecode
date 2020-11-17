@@ -1,23 +1,28 @@
 #include "neural_scorer.h"
-#include <torch/script.h>
-#include <torch/torch.h>
+
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cstring>
 #include <vector>
 #include <iterator>
 #include <algorithm>
 #include <tuple>
 #include "decoder_utils.h"
+#include <onnxruntime/core/session/onnxruntime_session_options_config_keys.h>
+#include <onnxruntime/core/session/onnxruntime_c_api.h>
+#include <onnxruntime/core/session/onnxruntime_cxx_api.h>
 
 using namespace std;
+
 Neural_Scorer::Neural_Scorer(double alpha,
                double beta,
                const std::string& lm_path,
                const std::vector<std::string>& vocab_list,
                int max_order,
-               const std::string& neural_lm_path) {
+               const std::string& vocab_path,
+               bool have_dictionary) {
   this->alpha = alpha;
   this->beta = beta;
 
@@ -26,9 +31,10 @@ Neural_Scorer::Neural_Scorer(double alpha,
   max_order_ = max_order;
   dict_size_ = 0;
   SPACE_ID_ = -1;
-  neural_lm_path_ = neural_lm_path;
+  lm_path_ = lm_path;
   vocabSize_ = vocab_list.size();
-  setup(lm_path, vocab_list);
+  have_dictionary_ = have_dictionary;
+  setup(vocab_path, vocab_list);
 }
 
 Neural_Scorer::~Neural_Scorer() {
@@ -37,22 +43,22 @@ Neural_Scorer::~Neural_Scorer() {
   }
 }
 
-void Neural_Scorer::setup(const std::string& lm_path,
+void Neural_Scorer::setup(const std::string& vocab_path,
                    const std::vector<std::string>& vocab_list) {
   // load language model
-  load_lm(lm_path);
+  load_lm(vocab_path);
   // set char map for scorer
   set_char_map(vocab_list);
   // fill the dictionary for FST
-  if (!is_character_based()) {
+  if (!is_character_based() && have_dictionary_) {
     fill_dictionary(true);
   }
 }
 
-void Neural_Scorer::load_lm(const std::string& lm_path) {
+void Neural_Scorer::load_lm(const std::string& vocab_path) {
     string word;
     std::ifstream file;
-    file.open(lm_path);
+    file.open(vocab_path);
     while(getline(file, word)){
         vocabulary_.push_back(word);
         if (is_character_based_ && word != UNK_TOKEN &&
@@ -62,10 +68,19 @@ void Neural_Scorer::load_lm(const std::string& lm_path) {
     }
     }
     file.close();
+  Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "");
+  Ort::SessionOptions session_options;
+  session_options.SetIntraOpNumThreads(1);
+  session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+  session = new Ort::Session(env, lm_path_.c_str(), session_options);
+  Ort::AllocatorWithDefaultOptions allocator;
+  char* input_name = session->GetInputName(0, allocator);
+  input_node_names.push_back(input_name);
+  output_node_names.push_back(session->GetOutputName(0, allocator));
 }
 
 double Neural_Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
-  std::vector<int> sentence;
+  std::vector<int64_t> sentence;
   std::string word;
   double score = 0.0;
   int tokenIdx;
@@ -75,6 +90,7 @@ double Neural_Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
     sentence[i] = int(words[i][0]);
   }
   tokenIdx = int(words[i][0]);
+  
   }
   else{
     std::vector<std::string>::iterator it;
@@ -92,19 +108,15 @@ double Neural_Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
     }
   }
   if (sentence.size() >= max_order_-1){
-  torch::jit::script::Module module;
-  module = torch::jit::load(neural_lm_path_);
-  auto opts = torch::TensorOptions().dtype(torch::kInt32);
-  torch::Tensor t = torch::from_blob(sentence.data(), sentence.size(), opts).to(torch::kInt64);
-  vector<torch::jit::IValue> inputs;
-  inputs.push_back(t.unsqueeze(1));
-  auto outputs = module.forward(inputs).toTuple()->elements()[0];
-  at::Tensor output = outputs.toTensor();
-  const int64_t num_classes = output.size(1);
-  auto prob_accessor = output.accessor<float, 3>();
-  if(tokenIdx<num_classes){
-    score = prob_accessor[0][sentence.size()-1][tokenIdx];
-    std::cout<<"";
+  size_t input_tensor_size = sentence.size();
+  std::vector<int64_t> input_node_dims = {1,int(input_tensor_size)};
+  auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+  Ort::Value input_tensor = Ort::Value::CreateTensor<int64_t>(memory_info, sentence.data(), input_tensor_size, input_node_dims.data(), 2);
+  auto output_tensors = session->Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, 1, output_node_names.data(), 1);
+  float* floatarr = output_tensors.front().GetTensorMutableData<float>();
+  if(tokenIdx<vocabulary_.size()){
+    int len = int((sentence.size() - 2) * vocabulary_.size());
+    score = floatarr[len + tokenIdx];
   }
   }
   if (std::isnan(score) || !std::isfinite(score)) {
