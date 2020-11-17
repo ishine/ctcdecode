@@ -51,7 +51,7 @@ class TestDecoders(unittest.TestCase):
             0.05294827, 0.22298418
         ]]
         self.greedy_result = ["ac'bdc", "b'da"]
-        self.beam_search_result = ['acdc', "b'a", "a a"]
+        self.beam_search_result = ['acdc', "b'a", "a a", "a bc"]
 
     def convert_to_string(self, tokens, vocab, seq_len):
         return ''.join([vocab[x] for x in tokens[0:seq_len]])
@@ -103,6 +103,16 @@ class TestDecoders(unittest.TestCase):
         output_str2 = self.convert_to_string(beam_results[1][0], self.vocab_list, out_seq_len[1][0])
         self.assertEqual(output_str1, self.beam_search_result[0])
         self.assertEqual(output_str2, self.beam_search_result[1])
+    
+    def test_beam_search_decoder_neural_lm(self):
+        vocab_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'vocab.txt')
+        lm_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'gpt2.onnx')
+        probs_seq = torch.FloatTensor([self.probs_seq1])
+        decoder = ctcdecode.CTCBeamDecoder(self.vocab_list, beam_width=self.beam_size,
+                                           blank_id=self.vocab_list.index('_'),model_path=lm_path,beta=0,alpha=0.0,cutoff_top_n=40,log_probs_input=False,kenlm=False,vocab_path=vocab_path)
+        beam_result, beam_scores, timesteps, out_seq_len = decoder.decode(probs_seq)
+        output_str = self.convert_to_string(beam_result[0][0], self.vocab_list, out_seq_len[0][0])
+        self.assertEqual(output_str, self.beam_search_result[3])
 
 
 
