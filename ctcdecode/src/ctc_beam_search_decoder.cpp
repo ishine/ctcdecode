@@ -6,7 +6,8 @@
 #include <limits>
 #include <map>
 #include <utility>
-
+#include <time.h>
+#include <iomanip>
 #include "decoder_utils.h"
 #include "ThreadPool.h"
 #include "fst/fstlib.h"
@@ -43,7 +44,7 @@ DecoderState::DecoderState(const std::vector<std::string> &vocabulary,
   root.score = root.log_prob_b_prev = 0.0;
   prefixes.push_back(&root);
 
-  if (ext_scorer != nullptr && !ext_scorer->is_character_based()) {
+  if (ext_scorer != nullptr && !ext_scorer->is_character_based() && ext_scorer->dictionary != nullptr) {
     auto fst_dict = static_cast<fst::StdVectorFst *>(ext_scorer->dictionary);
     fst::StdVectorFst *dict_ptr = fst_dict->Copy(true);
     root.set_dictionary(dict_ptr);
@@ -67,7 +68,6 @@ DecoderState::next(const std::vector<std::vector<double>> &probs_seq)
   // prefix search over time
   for (size_t time_step = 0; time_step < num_time_steps; ++time_step, ++abs_time_step) {
     auto &prob = probs_seq[time_step];
-
     float min_cutoff = -NUM_FLT_INF;
     bool full_beam = false;
     if (ext_scorer != nullptr) {
@@ -86,7 +86,6 @@ DecoderState::next(const std::vector<std::vector<double>> &probs_seq)
     for (size_t index = 0; index < log_prob_idx.size(); index++) {
       auto c = log_prob_idx[index].first;
       auto log_prob_c = log_prob_idx[index].second;
-
       for (size_t i = 0; i < prefixes.size() && i < beam_size; ++i) {
         auto prefix = prefixes[i];
         if (full_beam && log_prob_c + prefix->score < min_cutoff) {
@@ -126,7 +125,6 @@ DecoderState::next(const std::vector<std::vector<double>> &probs_seq)
             } else {
               prefix_to_score = prefix;
             }
-
             float score = 0.0;
             std::vector<std::string> ngram;
             ngram = ext_scorer->make_ngram(prefix_to_score);
@@ -187,7 +185,6 @@ DecoderState::decode() const
   size_t num_prefixes = std::min(prefixes_copy.size(), beam_size);
   std::sort(prefixes_copy.begin(), prefixes_copy.begin() + num_prefixes,
             std::bind(prefix_compare_external_scores, _1, _2, scores));
-
   // compute aproximate ctc score as the return score, without affecting the
   // return order of decoding result. To delete when decoder gets stable.
   for (size_t i = 0; i < beam_size && i < prefixes_copy.size(); ++i) {
