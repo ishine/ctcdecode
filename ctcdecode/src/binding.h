@@ -36,7 +36,8 @@ void* paddle_get_scorer(double alpha,
                         vector<std::string> new_vocab,
                         int vocab_size,
                         int max_order,
-                        const char* neural_lm_path,
+                        const char* vocab_path,
+                        bool have_dictionary,
                         bool kenlm);
 
 void paddle_release_scorer(void* scorer);
