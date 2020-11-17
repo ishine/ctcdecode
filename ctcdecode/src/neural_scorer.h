@@ -8,7 +8,7 @@
 
 #include "path_trie.h"
 #include "lm_scorer.h"
-
+#include <onnxruntime/core/session/onnxruntime_cxx_api.h>
 class Neural_Scorer:public Scorer {
 public:
   Neural_Scorer(double alpha,
@@ -16,7 +16,8 @@ public:
          const std::string &lm_path,
          const std::vector<std::string> &vocabulary,
          int max_order,
-         const std::string& neural_lm_path);
+         const std::string& neural_lm_path,
+         bool have_dictionary);
   ~Neural_Scorer();
 
   double get_log_cond_prob(const std::vector<std::string> &words) override;
@@ -44,7 +45,7 @@ public:
 
 protected:
   // necessary setup: load language model, set char map, fill FST's dictionary
-  void setup(const std::string &lm_path,
+  void setup(const std::string &vocab_path,
              const std::vector<std::string> &vocab_list) override;
 
   // load language model from given path
@@ -63,8 +64,11 @@ protected:
 
 private:
   int vocabSize_;
-  std::string neural_lm_path_;
-
+  std::string lm_path_;
+  bool have_dictionary_;
+  Ort::Session* session;
+  std::vector<const char*> input_node_names;
+  std::vector<const char*> output_node_names;
 };
 
 #endif  // NEURAL_SCORER_H_
