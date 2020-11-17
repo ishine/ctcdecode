@@ -147,14 +147,15 @@ void* paddle_get_scorer(double alpha,
                         vector<std::string> new_vocab,
                         int vocab_size,
                         int max_order,
-                        const char* neural_lm_path,
+                        const char* vocab_path,
+                        bool have_dictionary,
                         bool kenlm) {
     if (kenlm){
     Kenlm_Scorer* scorer = new Kenlm_Scorer(alpha, beta, lm_path, new_vocab);
     return static_cast<void*>(scorer);
     }
     else{
-        Neural_Scorer* scorer = new Neural_Scorer(alpha, beta, lm_path, new_vocab, max_order, neural_lm_path);
+        Neural_Scorer* scorer = new Neural_Scorer(alpha, beta, lm_path, new_vocab, max_order, vocab_path, have_dictionary);
         return static_cast<void*>(scorer);
     }
 }
