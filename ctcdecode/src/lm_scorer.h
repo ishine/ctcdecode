@@ -50,6 +50,8 @@ public:
 
   // pointer to the dictionary of FST
   void *dictionary;
+  std::unordered_map<std::string, float*> chache;
+  std::unordered_map<std::string, float*> chache_curr;
 
 protected:
   // necessary setup: load language model, set char map, fill FST's dictionary
