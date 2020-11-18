@@ -155,8 +155,10 @@ DecoderState::next(const std::vector<std::vector<double>> &probs_seq)
 
       prefixes.resize(beam_size);
     }
+    if(!ext_scorer->chache.empty() && !ext_scorer->chache_curr.empty()){
     ext_scorer->chache = ext_scorer->chache_curr;
     ext_scorer->chache_curr.clear();
+    }
   }  // end of loop over time
 }
 
