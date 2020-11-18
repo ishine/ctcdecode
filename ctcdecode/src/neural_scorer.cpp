@@ -81,6 +81,7 @@ void Neural_Scorer::load_lm(const std::string& vocab_path) {
 
 double Neural_Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
   std::vector<int64_t> sentence;
+  std::string label;
   std::string word;
   double score = 0.0;
   int tokenIdx;
@@ -99,6 +100,7 @@ double Neural_Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
       it = std::find(vocabulary_.begin(),vocabulary_.end(),words[i]);
       if(it != vocabulary_.end()){
         sentence.push_back(int(it - vocabulary_.begin()));
+        label.append(to_string(sentence[sentence.size()-1]));
       }
     }
     it = std::find(vocabulary_.begin(),vocabulary_.end(),words[i]);
@@ -108,15 +110,27 @@ double Neural_Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
     }
   }
   if (sentence.size() >= max_order_-1){
+  if (chache.find(label) == chache.end()){
   size_t input_tensor_size = sentence.size();
   std::vector<int64_t> input_node_dims = {1,int(input_tensor_size)};
   auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
   Ort::Value input_tensor = Ort::Value::CreateTensor<int64_t>(memory_info, sentence.data(), input_tensor_size, input_node_dims.data(), 2);
   auto output_tensors = session->Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, 1, output_node_names.data(), 1);
   float* floatarr = output_tensors.front().GetTensorMutableData<float>();
+  chache[label] = floatarr;
+  chache_curr[label] = floatarr;
   if(tokenIdx<vocabulary_.size()){
     int len = int((sentence.size() - 2) * vocabulary_.size());
     score = floatarr[len + tokenIdx];
+  }
+  }
+  else{
+    float* arr = chache[label];
+    if(tokenIdx<vocabulary_.size()){
+      int len = int((sentence.size() - 2) * vocabulary_.size());
+      score = arr[len + tokenIdx];
+    }
+    chache_curr[label] = arr;
   }
   }
   if (std::isnan(score) || !std::isfinite(score)) {
