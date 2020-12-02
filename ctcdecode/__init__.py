@@ -1,22 +1,18 @@
 import torch
 from ._ext import ctc_decode
 
-
 class CTCBeamDecoder(object):
     def __init__(self, labels, model_path=None, alpha=0.0, beta=0.0, cutoff_top_n=40, cutoff_prob=1.0, beam_width=100,
-                 num_processes=4, blank_id=0, log_probs_input=False, max_order=3, vocab_path="none", have_dictionary=True, kenlm=True):
+                 num_processes=4, blank_id=0, log_probs_input=False, max_order=3, vocab_path="none", have_dictionary=True, kenlm=True, lm_scorer=None):
         self.cutoff_top_n = cutoff_top_n
         self._beam_width = beam_width
-        self._scorer = None
+        self._scorer = lm_scorer
         self._num_processes = num_processes
         self._labels = list(labels)  # Ensure labels are a list
         self._num_labels = len(labels)
         self._blank_id = blank_id
         self._log_probs = 1 if log_probs_input else 0
         self.kenlm = kenlm
-        if model_path or (kenlm==False and vocab_path != "none"):
-                self._scorer = ctc_decode.paddle_get_scorer(alpha, beta, model_path.encode(), self._labels,
-                                                            self._num_labels, max_order, vocab_path, have_dictionary, kenlm)
         self._cutoff_prob = cutoff_prob
 
     def decode(self, probs, seq_lens=None):
@@ -40,7 +36,6 @@ class CTCBeamDecoder(object):
                                           self._num_processes,
                                           self._cutoff_prob, self.cutoff_top_n, self._blank_id, self._log_probs,
                                           output, timesteps, scores, out_seq_len)
-
         return output, scores, timesteps, out_seq_len
 
     def character_based(self):
@@ -55,7 +50,3 @@ class CTCBeamDecoder(object):
     def reset_params(self, alpha, beta):
         if self._scorer is not None:
             ctc_decode.reset_params(self._scorer, alpha, beta)
-
-    def __del__(self):
-        if self._scorer is not None:
-            ctc_decode.paddle_release_scorer(self._scorer)
