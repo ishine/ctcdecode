@@ -5,8 +5,6 @@
 #include <torch/torch.h>
 #include <memory>
 #include "lm_scorer.h"
-#include "kenlm_scorer.h"
-#include "neural_scorer.h"
 #include "ctc_beam_search_decoder.h"
 #include "utf8.h"
 #include "boost/shared_ptr.hpp"
@@ -140,30 +138,6 @@ int paddle_beam_decode_lm(at::Tensor th_probs,
                 cutoff_prob, cutoff_top_n, blank_id, log_input, scorer, th_output, th_timesteps, th_scores, th_out_length);
 }
 
-
-void* paddle_get_scorer(double alpha,
-                        double beta,
-                        const char* lm_path,
-                        vector<std::string> new_vocab,
-                        int vocab_size,
-                        int max_order,
-                        const char* vocab_path,
-                        bool have_dictionary,
-                        bool kenlm) {
-    if (kenlm){
-    Kenlm_Scorer* scorer = new Kenlm_Scorer(alpha, beta, lm_path, new_vocab);
-    return static_cast<void*>(scorer);
-    }
-    else{
-        Neural_Scorer* scorer = new Neural_Scorer(alpha, beta, lm_path, new_vocab, max_order, vocab_path, have_dictionary);
-        return static_cast<void*>(scorer);
-    }
-}
-
-void paddle_release_scorer(void* scorer) {
-    delete static_cast<Scorer*>(scorer);
-}
-
 int is_character_based(void *scorer){
     Scorer *ext_scorer  = static_cast<Scorer *>(scorer);
     return ext_scorer->is_character_based();
@@ -183,13 +157,12 @@ void reset_params(void *scorer, double alpha, double beta){
 }
 
 
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+PYBIND11_MODULE(ctc_decode, m) {
   m.def("paddle_beam_decode", &paddle_beam_decode, "paddle_beam_decode");
   m.def("paddle_beam_decode_lm", &paddle_beam_decode_lm, "paddle_beam_decode_lm");
-  m.def("paddle_get_scorer", &paddle_get_scorer, "paddle_get_scorer");
-  m.def("paddle_release_scorer", &paddle_release_scorer, "paddle_release_scorer");
   m.def("is_character_based", &is_character_based, "is_character_based");
   m.def("get_max_order", &get_max_order, "get_max_order");
   m.def("get_dict_size", &get_dict_size, "get_max_order");
   m.def("reset_params", &reset_params, "reset_params");
+  get_scorer(m);
 }
