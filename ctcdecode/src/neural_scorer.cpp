@@ -13,8 +13,32 @@
 #include <onnxruntime/core/session/onnxruntime_session_options_config_keys.h>
 #include <onnxruntime/core/session/onnxruntime_c_api.h>
 #include <onnxruntime/core/session/onnxruntime_cxx_api.h>
+#include "boost/shared_ptr.hpp"
+#include "boost/python.hpp"
+#include "boost/python/stl_iterator.hpp"
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include "lm_scorer.h"
+
+namespace py = pybind11;
+using namespace py::literals;
 
 using namespace std;
+
+void* paddle_get_neural_scorer(double alpha,
+                        double beta,
+                        const char* lm_path,
+                        std::vector<std::string> new_vocab,
+                        int max_order,
+                        const char* vocab_path,
+                        bool have_dictionary) {
+    Neural_Scorer* scorer = new Neural_Scorer(alpha, beta, lm_path, new_vocab, max_order, vocab_path, have_dictionary);
+    return static_cast<void*>(scorer);
+}
+
+void paddle_release_neural_scorer(void* scorer) {
+    delete static_cast<Neural_Scorer*>(scorer);
+}
 
 Neural_Scorer::Neural_Scorer(double alpha,
                double beta,
@@ -281,4 +305,9 @@ void Neural_Scorer::fill_dictionary(bool add_space) {
    */
   fst::Minimize(new_dict);
   this->dictionary = new_dict;
+}
+
+void get_scorer(py::module &m){
+  m.def("paddle_get_neural_scorer", &paddle_get_neural_scorer, "paddle_get_neural_scorer");
+  m.def("paddle_release_neural_scorer", &paddle_release_neural_scorer, "paddle_release_neural_scorer");
 }
