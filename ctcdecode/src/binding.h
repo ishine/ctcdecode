@@ -30,18 +30,6 @@ int paddle_beam_decode_lm(THFloatTensor *th_probs,
                           THFloatTensor *th_scores,
                           THIntTensor *th_out_length);
 
-void* paddle_get_scorer(double alpha,
-                        double beta,
-                        const char* lm_path,
-                        vector<std::string> new_vocab,
-                        int vocab_size,
-                        int max_order,
-                        const char* vocab_path,
-                        bool have_dictionary,
-                        bool kenlm);
-
-void paddle_release_scorer(void* scorer);
-
 int is_character_based(void *scorer);
 size_t get_max_order(void *scorer);
 size_t get_dict_size(void *scorer);
