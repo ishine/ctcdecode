@@ -6,7 +6,7 @@ import tarfile
 import urllib.request
 import warnings
 
-from setuptools import setup, find_packages, distutils
+from setuptools import setup, find_packages, distutils, Extension
 from torch.utils.cpp_extension import BuildExtension
 from torch.utils.cpp_extension import CppExtension, include_paths
 
@@ -32,7 +32,6 @@ download_extract('https://github.com/parlance/ctcdecode/releases/download/v1.0/b
 for file in ['third_party/kenlm/setup.py', 'third_party/ThreadPool/ThreadPool.h']:
     if not os.path.exists(file):
         warnings.warn('File `{}` does not appear to be present. Did you forget `git submodule update`?'.format(file))
-
 
 # Does gcc compile with this header and library?
 def compile_test(header, library):
@@ -76,7 +75,6 @@ extension = CppExtension(
     extra_compile_args=compile_args,
     language='c++'
 )
-
 
 # monkey-patch for parallel compilation
 # See: https://stackoverflow.com/a/13176803
