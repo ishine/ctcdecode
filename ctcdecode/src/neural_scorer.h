@@ -9,6 +9,7 @@
 #include "path_trie.h"
 #include "lm_scorer.h"
 #include <onnxruntime/core/session/onnxruntime_cxx_api.h>
+
 class Neural_Scorer:public Scorer {
 public:
   Neural_Scorer(double alpha,
@@ -42,6 +43,16 @@ public:
   // trransform the labels in index to the vector of words (word based lm) or
   // the vector of characters (character based lm)
   std::vector<std::string> split_labels(const std::vector<int> &labels) override;
+
+  void* paddle_get_neural_scorer(double alpha,
+                        double beta,
+                        const char* lm_path,
+                        std::vector<std::string> new_vocab,
+                        int max_order,
+                        const char* vocab_path,
+                        bool have_dictionary);
+  
+  void paddle_release_neural_scorer(void* scorer);
 
 protected:
   // necessary setup: load language model, set char map, fill FST's dictionary
