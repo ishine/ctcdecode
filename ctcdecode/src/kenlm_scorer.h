@@ -38,8 +38,8 @@ class Kenlm_Scorer:public Scorer {
 public:
   Kenlm_Scorer(double alpha,
              double beta,
-             const std::string &lm_path,
-             const std::vector<std::string> &vocabulary);
+             std::string lm_path,
+             std::vector<std::string> vocabulary);
   ~Kenlm_Scorer();
 
   double get_log_cond_prob(const std::vector<std::string> &words) override;
@@ -64,6 +64,13 @@ public:
   // trransform the labels in index to the vector of words (word based lm) or
   // the vector of characters (character based lm)
   std::vector<std::string> split_labels(const std::vector<int> &labels) override;
+
+  void* paddle_get_kenlm_scorer(double alpha,
+                        double beta,
+                        const char* lm_path,
+                        std::vector<std::string> new_vocab);
+  
+  void paddle_release_kenlm_scorer(void* scorer);
 
 protected:
   // necessary setup: load language model, set char map, fill FST's dictionary
