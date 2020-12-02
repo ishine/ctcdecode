@@ -8,15 +8,36 @@
 #include "lm/state.hh"
 #include "util/string_piece.hh"
 #include "util/tokenize_piece.hh"
-
+#include <time.h>
 #include "decoder_utils.h"
+#include <iomanip>
+#include "boost/shared_ptr.hpp"
+#include "boost/python.hpp"
+#include "boost/python/stl_iterator.hpp"
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include "lm_scorer.h"
 
 using namespace lm::ngram;
+namespace py = pybind11;
+using namespace py::literals;
+
+void* paddle_get_kenlm_scorer(double alpha,
+                        double beta,
+                        const char* lm_path,
+                        std::vector<std::string> new_vocab) {
+    Kenlm_Scorer* scorer = new Kenlm_Scorer(alpha, beta, lm_path, new_vocab);
+    return static_cast<void*>(scorer);
+}
+
+void paddle_release_kenlm_scorer(void* scorer) {
+    delete static_cast<Kenlm_Scorer*>(scorer);
+}
 
 Kenlm_Scorer::Kenlm_Scorer(double alpha,
                double beta,
-               const std::string& lm_path,
-               const std::vector<std::string>& vocab_list) {
+               std::string lm_path,
+               std::vector<std::string> vocab_list) {
   this->alpha = alpha;
   this->beta = beta;
 
@@ -227,3 +248,8 @@ void Kenlm_Scorer::fill_dictionary(bool add_space) {
   fst::Minimize(new_dict);
   this->dictionary = new_dict;
 }
+
+/*void get_scorer(py::module &m){
+  m.def("paddle_get_kenlm_scorer", &paddle_get_kenlm_scorer, "paddle_get_kenlm_scorer");
+  m.def("paddle_release_kenlm_scorer", &paddle_release_kenlm_scorer, "paddle_release_kenlm_scorer");
+}*/
