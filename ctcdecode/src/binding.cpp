@@ -138,6 +138,11 @@ int paddle_beam_decode_lm(at::Tensor th_probs,
                 cutoff_prob, cutoff_top_n, blank_id, log_input, scorer, th_output, th_timesteps, th_scores, th_out_length);
 }
 
+void paddle_release_scorer(void* scorer) {
+    Scorer *ext_scorer  = static_cast<Scorer *>(scorer);
+    ext_scorer->deletion();
+}
+
 int is_character_based(void *scorer){
     Scorer *ext_scorer  = static_cast<Scorer *>(scorer);
     return ext_scorer->is_character_based();
@@ -160,6 +165,7 @@ void reset_params(void *scorer, double alpha, double beta){
 PYBIND11_MODULE(ctc_decode, m) {
   m.def("paddle_beam_decode", &paddle_beam_decode, "paddle_beam_decode");
   m.def("paddle_beam_decode_lm", &paddle_beam_decode_lm, "paddle_beam_decode_lm");
+  m.def("paddle_release_scorer", &paddle_release_scorer, "paddle_release_scorer");
   m.def("is_character_based", &is_character_based, "is_character_based");
   m.def("get_max_order", &get_max_order, "get_max_order");
   m.def("get_dict_size", &get_dict_size, "get_max_order");
