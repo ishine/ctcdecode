@@ -30,10 +30,6 @@ void* paddle_get_kenlm_scorer(double alpha,
     return static_cast<void*>(scorer);
 }
 
-void paddle_release_kenlm_scorer(void* scorer) {
-    delete static_cast<Kenlm_Scorer*>(scorer);
-}
-
 Kenlm_Scorer::Kenlm_Scorer(double alpha,
                double beta,
                std::string lm_path,
@@ -59,6 +55,10 @@ Kenlm_Scorer::~Kenlm_Scorer() {
   if (dictionary != nullptr) {
     delete static_cast<fst::StdVectorFst*>(dictionary);
   }
+}
+
+void Kenlm_Scorer::deletion(){
+  this->~Kenlm_Scorer();
 }
 
 void Kenlm_Scorer::setup(const std::string& lm_path,
@@ -249,7 +249,10 @@ void Kenlm_Scorer::fill_dictionary(bool add_space) {
   this->dictionary = new_dict;
 }
 
-/*void get_scorer(py::module &m){
+/*PYBIND11_MODULE(kenlm_scorer, m) {
   m.def("paddle_get_kenlm_scorer", &paddle_get_kenlm_scorer, "paddle_get_kenlm_scorer");
   m.def("paddle_release_kenlm_scorer", &paddle_release_kenlm_scorer, "paddle_release_kenlm_scorer");
 }*/
+void get_scorer(py::module &m){
+  m.def("paddle_get_kenlm_scorer", &paddle_get_kenlm_scorer, "paddle_get_kenlm_scorer");
+}
