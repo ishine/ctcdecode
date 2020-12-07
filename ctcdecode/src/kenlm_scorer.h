@@ -1,5 +1,5 @@
-#ifndef KENLM_SCORER_H_
-#define KENLM_SCORER_H_
+#ifndef SCORER_H_
+#define SCORER_H_
 
 #include <memory>
 #include <string>
@@ -12,87 +12,83 @@
 #include "util/string_piece.hh"
 
 #include "path_trie.h"
-#include "lm_scorer.h"
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
-// Implement a callback to retrive the dictionary of language model.
-class RetriveStrEnumerateVocab : public lm::EnumerateVocab {
+namespace py = pybind11;
+using namespace py::literals;
+
+const double OOV_SCORE = -1000.0;
+const std::string START_TOKEN = "<s>";
+const std::string UNK_TOKEN = "<unk>";
+const std::string END_TOKEN = "</s>";
+
+void get_scorer(py::module &);
+
+class Scorer {
 public:
-  RetriveStrEnumerateVocab() {}
+  virtual double get_log_cond_prob(const std::vector<std::string> &words) = 0;
 
-  void Add(lm::WordIndex index, const StringPiece &str) {
-    vocabulary.push_back(std::string(str.data(), str.length()));
-  }
-
-  std::vector<std::string> vocabulary;
-};
-
-/* External scorer to query score for n-gram or sentence, including language
- * model scoring and word insertion.
- *
- * Example:
- *     Scorer scorer(alpha, beta, "path_of_language_model");
- *     scorer.get_log_cond_prob({ "WORD1", "WORD2", "WORD3" });
- *     scorer.get_sent_log_prob({ "WORD1", "WORD2", "WORD3" });
- */
-class Kenlm_Scorer:public Scorer {
-public:
-  Kenlm_Scorer(double alpha,
-             double beta,
-             std::string lm_path,
-             std::vector<std::string> vocabulary);
-  ~Kenlm_Scorer();
-
-  double get_log_cond_prob(const std::vector<std::string> &words) override;
-
-  double get_sent_log_prob(const std::vector<std::string> &words) override;
+  virtual double get_sent_log_prob(const std::vector<std::string> &words) = 0;
 
   // return the max order
-  size_t get_max_order() override { return max_order_; }
+  virtual size_t get_max_order() = 0;
 
   // return the dictionary size of language model
-  size_t get_dict_size() override { return dict_size_; }
+  virtual size_t get_dict_size() = 0;
 
   // retrun true if the language model is character based
-  bool is_character_based() override { return is_character_based_; }
+  virtual bool is_character_based() = 0;
 
-  // reset params alpha & beta
-  void reset_params(float alpha, float beta) override;
+    // reset params alpha & beta
+  virtual void reset_params(float alpha, float beta) = 0;;
 
   // make ngram for a given prefix
-  std::vector<std::string> make_ngram(PathTrie *prefix) override;
+  virtual std::vector<std::string> make_ngram(PathTrie *prefix) = 0;
 
   // trransform the labels in index to the vector of words (word based lm) or
   // the vector of characters (character based lm)
-  std::vector<std::string> split_labels(const std::vector<int> &labels) override;
+  virtual std::vector<std::string> split_labels(const std::vector<int> &labels) = 0;
+  
+  virtual void deletion() = 0;
 
-  void deletion() override;
+  // language model weight
+  double alpha;
+  // word insertion weight
+  double beta;
 
-  void* paddle_get_kenlm_scorer(double alpha,
-                        double beta,
-                        const char* lm_path,
-                        std::vector<std::string> new_vocab);
+  // pointer to the dictionary of FST
+  void *dictionary;
+  std::unordered_map<std::string, float*> chache;
+  std::unordered_map<std::string, float*> chache_curr;
 
 protected:
   // necessary setup: load language model, set char map, fill FST's dictionary
-  void setup(const std::string &lm_path,
-             const std::vector<std::string> &vocab_list) override;
+  virtual void setup(const std::string &lm_path,
+             const std::vector<std::string> &vocab_list) = 0;
 
   // load language model from given path
-  void load_lm(const std::string &lm_path) override;
+  virtual void load_lm(const std::string &lm_path) = 0;
 
   // fill dictionary for FST
-  void fill_dictionary(bool add_space) override;
+  virtual void fill_dictionary(bool add_space) = 0;
 
   // set char map
-  void set_char_map(const std::vector<std::string> &char_list) override;
+  virtual void set_char_map(const std::vector<std::string> &char_list) = 0;
 
-  double get_log_prob(const std::vector<std::string> &words) override;
+  virtual double get_log_prob(const std::vector<std::string> &words) = 0;
 
   // translate the vector in index to string
-  std::string vec2str(const std::vector<int> &input) override;
+  virtual std::string vec2str(const std::vector<int> &input) = 0;
 
-private:
-  void *language_model_;
+  bool is_character_based_;
+  size_t max_order_;
+  size_t dict_size_;
+  int SPACE_ID_;
+  std::vector<std::string> char_list_;
+  std::unordered_map<std::string, int> char_map_;
+
+  std::vector<std::string> vocabulary_;
 };
 
-#endif  // KENLM_SCORER_H_
+#endif  // SCORER_H_
