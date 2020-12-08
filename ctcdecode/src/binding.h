@@ -30,7 +30,6 @@ int paddle_beam_decode_lm(THFloatTensor *th_probs,
                           THFloatTensor *th_scores,
                           THIntTensor *th_out_length);
 
-void paddle_release_scorer(void* scorer)
 int is_character_based(void *scorer);
 size_t get_max_order(void *scorer);
 size_t get_dict_size(void *scorer);
