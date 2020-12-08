@@ -6,7 +6,7 @@ from __future__ import print_function
 import unittest
 import torch
 import ctcdecode
-from ctcdecode._ext import ctc_decode
+from ctcdecode import scorer
 import os
 
 class TestDecoders(unittest.TestCase):
@@ -52,7 +52,7 @@ class TestDecoders(unittest.TestCase):
             0.05294827, 0.22298418
         ]]
         self.greedy_result = ["ac'bdc", "b'da"]
-        self.beam_search_result = ['acdc', "b'a", "a a", "a bc"]
+        self.beam_search_result = ['acdc', "b'a", "a a"]
 
     def convert_to_string(self, tokens, vocab, seq_len):
         return ''.join([vocab[x] for x in tokens[0:seq_len]])
@@ -73,16 +73,16 @@ class TestDecoders(unittest.TestCase):
         output_str = self.convert_to_string(beam_result[0][0], self.vocab_list, out_seq_len[0][0])
         self.assertEqual(output_str, self.beam_search_result[1])
 
-    """def test_beam_search_decoder_3(self):
+    def test_beam_search_decoder_3(self):
         lm_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.arpa')
         probs_seq = torch.FloatTensor([self.probs_seq2])
-
+        s = scorer.Scorer_Create(list(self.vocab_list),lm_path, 0.0, 0.0)
         decoder = ctcdecode.CTCBeamDecoder(self.vocab_list, beam_width=self.beam_size,
                                            blank_id=self.vocab_list.index('_'),
-                                           model_path=lm_path)
+                                           model_path=lm_path, lm_scorer=s._scorer)
         beam_result, beam_scores, timesteps, out_seq_len = decoder.decode(probs_seq)
         output_str = self.convert_to_string(beam_result[0][0], self.vocab_list, out_seq_len[0][0])
-        self.assertEqual(output_str, self.beam_search_result[2])"""
+        self.assertEqual(output_str, self.beam_search_result[2])
 
     def test_beam_search_decoder_batch(self):
         probs_seq = torch.FloatTensor([self.probs_seq1, self.probs_seq2])
@@ -104,17 +104,6 @@ class TestDecoders(unittest.TestCase):
         output_str2 = self.convert_to_string(beam_results[1][0], self.vocab_list, out_seq_len[1][0])
         self.assertEqual(output_str1, self.beam_search_result[0])
         self.assertEqual(output_str2, self.beam_search_result[1])
-    
-    def test_beam_search_decoder_neural_lm(self):
-        vocab_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'vocab.txt')
-        lm_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'gpt2.onnx')
-        probs_seq = torch.FloatTensor([self.probs_seq1])
-        scorer = ctc_decode.paddle_get_neural_scorer(0.0, 0.0, lm_path, list(self.vocab_list), 3, vocab_path, True)
-        decoder = ctcdecode.CTCBeamDecoder(self.vocab_list, beam_width=self.beam_size,
-                                           blank_id=self.vocab_list.index('_'),model_path=lm_path,beta=0,alpha=0.0,cutoff_top_n=40,log_probs_input=False,kenlm=False,vocab_path=vocab_path, lm_scorer=scorer)
-        beam_result, beam_scores, timesteps, out_seq_len = decoder.decode(probs_seq)
-        output_str = self.convert_to_string(beam_result[0][0], self.vocab_list, out_seq_len[0][0])
-        self.assertEqual(output_str, self.beam_search_result[3])
 
 
 
