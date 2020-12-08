@@ -49,7 +49,6 @@ public:
   // trransform the labels in index to the vector of words (word based lm) or
   // the vector of characters (character based lm)
   virtual std::vector<std::string> split_labels(const std::vector<int> &labels) = 0;
-  
   // language model weight
   double alpha;
   // word insertion weight
