@@ -3,7 +3,7 @@ from ._ext import ctc_decode
 
 class CTCBeamDecoder(object):
     def __init__(self, labels, model_path=None, alpha=0.0, beta=0.0, cutoff_top_n=40, cutoff_prob=1.0, beam_width=100,
-                 num_processes=4, blank_id=0, log_probs_input=False, max_order=3, vocab_path="none", have_dictionary=True, kenlm=True, lm_scorer=None):
+                 num_processes=4, blank_id=0, log_probs_input=False, lm_scorer=None):
         self.cutoff_top_n = cutoff_top_n
         self._beam_width = beam_width
         self._scorer = lm_scorer
@@ -12,7 +12,6 @@ class CTCBeamDecoder(object):
         self._num_labels = len(labels)
         self._blank_id = blank_id
         self._log_probs = 1 if log_probs_input else 0
-        self.kenlm = kenlm
         self._cutoff_prob = cutoff_prob
 
     def decode(self, probs, seq_lens=None):
@@ -50,7 +49,3 @@ class CTCBeamDecoder(object):
     def reset_params(self, alpha, beta):
         if self._scorer is not None:
             ctc_decode.reset_params(self._scorer, alpha, beta)
-    
-    def __del__(self):
-        if self._scorer is not None:
-            ctc_decode.paddle_release_scorer(self._scorer)
