@@ -22,12 +22,16 @@ using namespace lm::ngram;
 namespace py = pybind11;
 using namespace py::literals;
 
-void* paddle_get_kenlm_scorer(double alpha,
+void* paddle_get_scorer(double alpha,
                         double beta,
                         const char* lm_path,
                         std::vector<std::string> new_vocab) {
     Kenlm_Scorer* scorer = new Kenlm_Scorer(alpha, beta, lm_path, new_vocab);
     return static_cast<void*>(scorer);
+}
+
+void paddle_release_scorer(void* scorer) {
+    delete static_cast<Kenlm_Scorer*>(scorer);
 }
 
 Kenlm_Scorer::Kenlm_Scorer(double alpha,
@@ -55,10 +59,6 @@ Kenlm_Scorer::~Kenlm_Scorer() {
   if (dictionary != nullptr) {
     delete static_cast<fst::StdVectorFst*>(dictionary);
   }
-}
-
-void Kenlm_Scorer::deletion(){
-  this->~Kenlm_Scorer();
 }
 
 void Kenlm_Scorer::setup(const std::string& lm_path,
@@ -249,10 +249,7 @@ void Kenlm_Scorer::fill_dictionary(bool add_space) {
   this->dictionary = new_dict;
 }
 
-/*PYBIND11_MODULE(kenlm_scorer, m) {
-  m.def("paddle_get_kenlm_scorer", &paddle_get_kenlm_scorer, "paddle_get_kenlm_scorer");
-  m.def("paddle_release_kenlm_scorer", &paddle_release_kenlm_scorer, "paddle_release_kenlm_scorer");
-}*/
 void get_scorer(py::module &m){
-  m.def("paddle_get_kenlm_scorer", &paddle_get_kenlm_scorer, "paddle_get_kenlm_scorer");
+  m.def("paddle_get_scorer", &paddle_get_scorer, "paddle_get_scorer");
+  m.def("paddle_release_scorer", &paddle_release_scorer, "paddle_release_scorer");
 }
