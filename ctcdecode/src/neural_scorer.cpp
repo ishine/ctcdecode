@@ -25,7 +25,7 @@ using namespace py::literals;
 
 using namespace std;
 
-void* paddle_get_neural_scorer(double alpha,
+/*void* paddle_get_scorer(double alpha,
                         double beta,
                         const char* lm_path,
                         std::vector<std::string> new_vocab,
@@ -35,6 +35,10 @@ void* paddle_get_neural_scorer(double alpha,
     Neural_Scorer* scorer = new Neural_Scorer(alpha, beta, lm_path, new_vocab, max_order, vocab_path, have_dictionary);
     return static_cast<void*>(scorer);
 }
+
+void paddle_release_scorer(void* scorer) {
+    delete static_cast<Neural_Scorer*>(scorer);
+}*/
 
 Neural_Scorer::Neural_Scorer(double alpha,
                double beta,
@@ -61,10 +65,6 @@ Neural_Scorer::~Neural_Scorer() {
   if (dictionary != nullptr) {
     delete static_cast<fst::StdVectorFst*>(dictionary);
   }
-}
-
-void Neural_Scorer::deletion(){
-  this->~Neural_Scorer();
 }
 
 void Neural_Scorer::setup(const std::string& vocab_path,
@@ -308,5 +308,6 @@ void Neural_Scorer::fill_dictionary(bool add_space) {
 }
 
 /*void get_scorer(py::module &m){
-  m.def("paddle_get_neural_scorer", &paddle_get_neural_scorer, "paddle_get_neural_scorer");
+  m.def("paddle_get_scorer", &paddle_get_scorer, "paddle_get_scorer");
+  m.def("paddle_release_scorer", &paddle_release_scorer, "paddle_release_scorer");
 }*/
