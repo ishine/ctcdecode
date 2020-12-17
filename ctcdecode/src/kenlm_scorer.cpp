@@ -22,7 +22,7 @@ using namespace lm::ngram;
 namespace py = pybind11;
 using namespace py::literals;
 
-void* paddle_get_scorer(double alpha,
+/*void* paddle_get_scorer(double alpha,
                         double beta,
                         const char* lm_path,
                         std::vector<std::string> new_vocab) {
@@ -32,7 +32,7 @@ void* paddle_get_scorer(double alpha,
 
 void paddle_release_scorer(void* scorer) {
     delete static_cast<Kenlm_Scorer*>(scorer);
-}
+}*/
 
 Kenlm_Scorer::Kenlm_Scorer(double alpha,
                double beta,
@@ -249,7 +249,7 @@ void Kenlm_Scorer::fill_dictionary(bool add_space) {
   this->dictionary = new_dict;
 }
 
-void get_scorer(py::module &m){
+/*void get_scorer(py::module &m){
   m.def("paddle_get_scorer", &paddle_get_scorer, "paddle_get_scorer");
   m.def("paddle_release_scorer", &paddle_release_scorer, "paddle_release_scorer");
-}
+}*/
