@@ -1,5 +1,6 @@
 #include "neural_scorer.h"
-
+#include <torch/script.h>
+#include <torch/torch.h>
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
@@ -25,7 +26,7 @@ using namespace py::literals;
 
 using namespace std;
 
-/*void* paddle_get_scorer(double alpha,
+void* paddle_get_scorer(double alpha,
                         double beta,
                         const char* lm_path,
                         std::vector<std::string> new_vocab,
@@ -38,7 +39,7 @@ using namespace std;
 
 void paddle_release_scorer(void* scorer) {
     delete static_cast<Neural_Scorer*>(scorer);
-}*/
+}
 
 Neural_Scorer::Neural_Scorer(double alpha,
                double beta,
@@ -92,11 +93,14 @@ void Neural_Scorer::load_lm(const std::string& vocab_path) {
     }
     }
     file.close();
-  Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "");
+  //std::cout<<vocabulary_.size()<<"\n";
+  Ort::Env* env;
+  env = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "test");
   Ort::SessionOptions session_options;
   session_options.SetIntraOpNumThreads(1);
   session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
-  session = new Ort::Session(env, lm_path_.c_str(), session_options);
+  const char* model_path = "quant_gpt2.onnx";
+  session = new Ort::Session(*env, model_path, session_options);
   Ort::AllocatorWithDefaultOptions allocator;
   char* input_name = session->GetInputName(0, allocator);
   input_node_names.push_back(input_name);
@@ -112,7 +116,7 @@ double Neural_Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
   size_t i;
   if(is_character_based_){
   for(i=0; i<words.size()-1; i++){
-    sentence[i] = int(words[i][0]);
+    sentence.push_back(int(words[i][0]));
   }
   tokenIdx = int(words[i][0]);
   
@@ -144,14 +148,14 @@ double Neural_Scorer::get_log_cond_prob(const std::vector<std::string>& words) {
   chache[label] = floatarr;
   chache_curr[label] = floatarr;
   if(tokenIdx<vocabulary_.size()){
-    int len = int((sentence.size() - 2) * vocabulary_.size());
+    int len = int((sentence.size() - 1) * vocabulary_.size());
     score = floatarr[len + tokenIdx];
   }
   }
   else{
     float* arr = chache[label];
     if(tokenIdx<vocabulary_.size()){
-      int len = int((sentence.size() - 2) * vocabulary_.size());
+      int len = int((sentence.size() - 1) * vocabulary_.size());
       score = arr[len + tokenIdx];
     }
     chache_curr[label] = arr;
@@ -307,7 +311,7 @@ void Neural_Scorer::fill_dictionary(bool add_space) {
   this->dictionary = new_dict;
 }
 
-/*void get_scorer(py::module &m){
+void get_scorer(py::module &m){
   m.def("paddle_get_scorer", &paddle_get_scorer, "paddle_get_scorer");
   m.def("paddle_release_scorer", &paddle_release_scorer, "paddle_release_scorer");
-}*/
+}
