@@ -33,8 +33,7 @@ class CTCBeamDecoder(object):
         self._blank_id = blank_id
         self._log_probs = 1 if log_probs_input else 0
         if model_path:
-            self._scorer = ctc_decode.paddle_get_scorer(alpha, beta, model_path.encode(), self._labels,
-                                                        self._num_labels)
+            self._scorer = ctc_decode.paddle_get_scorer(alpha, beta, model_path.encode(), self._labels) #function call can be changed to match the new lm
         self._cutoff_prob = cutoff_prob
 
     def decode(self, probs, seq_lens=None):
