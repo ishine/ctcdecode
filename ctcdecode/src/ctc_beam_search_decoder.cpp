@@ -2,11 +2,9 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <limits>
 #include <map>
 #include <utility>
-#include <time.h>
 #include <iomanip>
 #include "decoder_utils.h"
 #include "ThreadPool.h"
