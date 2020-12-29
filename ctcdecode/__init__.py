@@ -80,7 +80,7 @@ class CTCBeamDecoder(object):
         return output, scores, timesteps, out_seq_len
 
     def get_scorer(self, alpha, beta, model_path, labels):
-        return ctc_decode.paddle_get_scorer(alpha, beta, model_path.encode(), labels)
+        return ctc_decode.paddle_get_scorer(alpha, beta, model_path, labels)
     
     def character_based(self):
         return ctc_decode.is_character_based(self._scorer) if self._scorer else None
