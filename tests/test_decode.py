@@ -76,10 +76,9 @@ class TestDecoders(unittest.TestCase):
     def test_beam_search_decoder_3(self):
         lm_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.arpa')
         probs_seq = torch.FloatTensor([self.probs_seq2])
-        s = scorer.Scorer_Create(list(self.vocab_list),lm_path, 0.0, 0.0)
         decoder = ctcdecode.CTCBeamDecoder(self.vocab_list, beam_width=self.beam_size,
                                            blank_id=self.vocab_list.index('_'),
-                                           model_path=lm_path, lm_scorer=s._scorer)
+                                           model_path=lm_path)
         beam_result, beam_scores, timesteps, out_seq_len = decoder.decode(probs_seq)
         output_str = self.convert_to_string(beam_result[0][0], self.vocab_list, out_seq_len[0][0])
         self.assertEqual(output_str, self.beam_search_result[2])
