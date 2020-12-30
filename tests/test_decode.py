@@ -6,7 +6,6 @@ from __future__ import print_function
 import unittest
 import torch
 import ctcdecode
-from ctcdecode import scorer
 import os
 
 class TestDecoders(unittest.TestCase):
