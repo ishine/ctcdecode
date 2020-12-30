@@ -13,9 +13,6 @@
 
 #include "path_trie.h"
 
-namespace py = pybind11;
-using namespace py::literals;
-
 const double OOV_SCORE = -1000.0;
 const std::string START_TOKEN = "<s>";
 const std::string UNK_TOKEN = "<unk>";
