@@ -1,12 +1,5 @@
-#include <algorithm>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <torch/torch.h>
-#include <memory>
 #include "ctcdecode/src/lm_scorer.h"
 #include "ctcdecode/src/ctc_beam_search_decoder.h"
-#include "utf8.h"
 #include "boost/shared_ptr.hpp"
 #include "boost/python.hpp"
 #include "boost/python/stl_iterator.hpp"
