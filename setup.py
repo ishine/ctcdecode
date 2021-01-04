@@ -62,7 +62,7 @@ lib_sources = glob.glob('third_party/kenlm/util/*.cc') + glob.glob('third_party/
 lib_sources = [fn for fn in lib_sources if not (fn.endswith('main.cc') or fn.endswith('test.cc'))]
 
 third_party_includes = [os.path.realpath(os.path.join("third_party", lib)) for lib in third_party_libs]
-ctc_sources = glob.glob('ctcdecode/src/*.cpp') + glob.glob('kenlm_scorer.cpp')
+ctc_sources = glob.glob('ctcdecode/src/*.cpp') + glob.glob('bind.cpp')
 
 extension = CppExtension(
     name='ctcdecode._ext.ctc_decode',
