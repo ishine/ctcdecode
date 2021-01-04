@@ -1,6 +1,5 @@
 #include "binding.h"
 #include <algorithm>
-#include <iostream>
 #include <string>
 #include <vector>
 #include <torch/torch.h>
