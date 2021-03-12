@@ -20,8 +20,9 @@ using namespace py::literals;
 void* paddle_get_scorer(double alpha,
                         double beta,
                         const char* lm_path,
-                        std::vector<std::string> new_vocab) {
-    Kenlm_Scorer* scorer = new Kenlm_Scorer(alpha, beta, lm_path, new_vocab);
+                        std::vector<std::string> new_vocab,
+                        bool is_bpe_based) {
+    Kenlm_Scorer* scorer = new Kenlm_Scorer(alpha, beta, lm_path, new_vocab, is_bpe_based);
     return static_cast<void*>(scorer);
 }
 
@@ -32,14 +33,15 @@ void paddle_release_scorer(void* scorer) {
 Kenlm_Scorer::Kenlm_Scorer(double alpha,
                double beta,
                std::string lm_path,
-               std::vector<std::string> vocab_list) {
+               std::vector<std::string> vocab_list,
+               bool is_bpe_based) {
   this->alpha = alpha;
   this->beta = beta;
 
   dictionary = nullptr;
   is_character_based_ = true;
   language_model_ = nullptr;
-
+  is_bpe_based_ = is_bpe_based;
   max_order_ = 0;
   dict_size_ = 0;
   SPACE_ID_ = -1;
@@ -78,12 +80,14 @@ void Kenlm_Scorer::load_lm(const std::string& lm_path) {
   language_model_ = lm::ngram::LoadVirtual(filename, config);
   max_order_ = static_cast<lm::base::Model*>(language_model_)->Order();
   vocabulary_ = enumerate.vocabulary;
+  if(!is_bpe_based_){
   for (size_t i = 0; i < vocabulary_.size(); ++i) {
     if (is_character_based_ && vocabulary_[i] != UNK_TOKEN &&
         vocabulary_[i] != START_TOKEN && vocabulary_[i] != END_TOKEN &&
         get_utf8_str_len(enumerate.vocabulary[i]) > 1) {
       is_character_based_ = false;
     }
+  }
   }
 }
 
