@@ -2,14 +2,18 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+from transformers import GPT2Tokenizer
 import unittest
 import torch
 import ctcdecode
 import os
+import numpy as np
 
 class TestDecoders(unittest.TestCase):
     def setUp(self):
+        tokenizer = GPT2Tokenizer.from_pretrained('distilgpt2')
+        vocab = tokenizer.get_vocab()
+        self.wordpiece_vocab_list = list(vocab.keys())+['_']
         self.vocab_list = ['\'', ' ', 'a', 'b', 'c', 'd', '_']
         self.beam_size = 20
         self.probs_seq1 = [[
@@ -50,6 +54,7 @@ class TestDecoders(unittest.TestCase):
             0.15882358, 0.1235788, 0.23376776, 0.20510435, 0.00279306,
             0.05294827, 0.22298418
         ]]
+        self.probs_seq3 = np.random.randn(7,50258)
         self.greedy_result = ["ac'bdc", "b'da"]
         self.beam_search_result = ['acdc', "b'a", "a a"]
 
@@ -102,7 +107,15 @@ class TestDecoders(unittest.TestCase):
         output_str2 = self.convert_to_string(beam_results[1][0], self.vocab_list, out_seq_len[1][0])
         self.assertEqual(output_str1, self.beam_search_result[0])
         self.assertEqual(output_str2, self.beam_search_result[1])
-
+    
+    def test_beam_search_decoder_6(self):
+        lm_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'bible.arpa')
+        probs_seq = torch.FloatTensor([self.probs_seq3])
+        decoder = ctcdecode.CTCBeamDecoder(self.wordpiece_vocab_list, beam_width=self.beam_size,
+                                           blank_id=self.wordpiece_vocab_list.index('_'),
+                                           model_path=lm_path, is_bpe_based=True)
+        beam_result, beam_scores, timesteps, out_seq_len = decoder.decode(probs_seq)
+        output_str = self.convert_to_string(beam_result[0][0], self.wordpiece_vocab_list, out_seq_len[0][0])
 
 
 if __name__ == '__main__':
