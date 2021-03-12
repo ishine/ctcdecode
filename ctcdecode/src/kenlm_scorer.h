@@ -17,7 +17,8 @@
 void* paddle_get_scorer(double alpha,
                         double beta,
                         const char* lm_path,
-                        std::vector<std::string> new_vocab);
+                        std::vector<std::string> new_vocab,
+                        bool is_bpe_based);
 
 void paddle_release_scorer(void* scorer);
 
@@ -46,7 +47,8 @@ public:
   Kenlm_Scorer(double alpha,
              double beta,
              std::string lm_path,
-             std::vector<std::string> vocabulary);
+             std::vector<std::string> vocabulary,
+             bool is_bpe_based);
   ~Kenlm_Scorer();
 
   double get_log_cond_prob(const std::vector<std::string> &words) override;
@@ -100,6 +102,7 @@ protected:
 
 private:
   void *language_model_;
+  bool is_bpe_based_;
 };
 
 #endif  // KENLM_SCORER_H_
