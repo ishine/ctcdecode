@@ -2,12 +2,35 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from transformers import GPT2Tokenizer
+from transformers import GPT2Tokenizer,GPT2LMHeadModel
+
 import unittest
 import torch
 import ctcdecode
 import os
 import numpy as np
+import csv
+
+def loadRNNOutput(fn,len):
+    with open(fn) as file:
+            probs = list()
+            csv_reader = csv.reader(file,delimiter=',')
+            for row in csv_reader:
+                probs.extend(row)
+    probs_seq = np.array(probs)
+    probs_seq = probs_seq.reshape(-1,len)
+    return probs_seq.astype(np.float)
+
+def softmax(mat):
+	"calc softmax such that labels per time-step form probability distribution"
+	maxT, _ = mat.shape # dim0=t, dim1=c
+	res = np.zeros(mat.shape)
+	for t in range(maxT):
+		y = mat[t, :]
+		e = np.exp(y)
+		s = np.sum(e)
+		res[t, :] = e/s
+	return res
 
 class TestDecoders(unittest.TestCase):
     def setUp(self):
@@ -54,9 +77,9 @@ class TestDecoders(unittest.TestCase):
             0.15882358, 0.1235788, 0.23376776, 0.20510435, 0.00279306,
             0.05294827, 0.22298418
         ]]
-        self.probs_seq3 = np.random.randn(7,50258)
+        self.probs_seq6 = softmax(loadRNNOutput(os.path.join(os.path.dirname(os.path.realpath(__file__)),'prob.csv'),len(self.wordpiece_vocab_list)))
         self.greedy_result = ["ac'bdc", "b'da"]
-        self.beam_search_result = ['acdc', "b'a", "a a"]
+        self.beam_search_result = ['acdc', "b'a", "a a", "ĠTheĠand"]
 
     def convert_to_string(self, tokens, vocab, seq_len):
         return ''.join([vocab[x] for x in tokens[0:seq_len]])
@@ -110,12 +133,13 @@ class TestDecoders(unittest.TestCase):
     
     def test_beam_search_decoder_6(self):
         lm_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'bible.arpa')
-        probs_seq = torch.FloatTensor([self.probs_seq3])
+        probs_seq = torch.FloatTensor([self.probs_seq6])
         decoder = ctcdecode.CTCBeamDecoder(self.wordpiece_vocab_list, beam_width=self.beam_size,
                                            blank_id=self.wordpiece_vocab_list.index('_'),
                                            model_path=lm_path, is_bpe_based=True)
         beam_result, beam_scores, timesteps, out_seq_len = decoder.decode(probs_seq)
         output_str = self.convert_to_string(beam_result[0][0], self.wordpiece_vocab_list, out_seq_len[0][0])
+        self.assertEqual(output_str, self.beam_search_result[3])
 
 
 if __name__ == '__main__':
