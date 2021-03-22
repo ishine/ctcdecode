@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from transformers import GPT2Tokenizer,GPT2LMHeadModel
+from transformers import GPT2Tokenizer
 
 import unittest
 import torch
